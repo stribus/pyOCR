@@ -13,11 +13,19 @@ import configparser
 
 
 class ScreenCaptureOCR:
-    def __init__(self):
+    def __init__(self, linguagem='por'):
+        """
+        Construtor da classe.
+
+        :param linguagem: Linguagem para o reconhecimento de caracteres
+        :type linguagem: str
+        """
+
         self.root = tk.Tk()
         self.root.attributes('-alpha', 0.3) # Transparência da janela
         self.root.attributes('-fullscreen', True)
         self.root.configure(background='grey')
+        self.linguagem = linguagem
 
         # Variáveis para armazenar as coordenadas
         self.start_x = None
@@ -38,12 +46,16 @@ class ScreenCaptureOCR:
         self.root.bind("<Escape>", lambda e: self.root.quit())
 
     def on_press(self, event):
-        # Salvar posição inicial
+        """Salva a posição inicial do clique do mouse."""
         self.start_x = event.x
         self.start_y = event.y
 
     def on_drag(self, event):
-        # Atualizar posição atual
+        """Redesenha o retângulo de seleção conforme o mouse é movido.
+
+        :param event: Evento do mouse
+        :type event: tk.Event
+        """
         self.current_x = event.x
         self.current_y = event.y
         
@@ -56,15 +68,26 @@ class ScreenCaptureOCR:
         )
         
     def copy_to_clipboard(self, text):
-        # Copiar texto para a área de transferência
+        """Copies the given text to the system clipboard.
+
+        :param text: The text string to be copied to the clipboard.
+        :type text: str
+
+        :raises pyperclip.PyperclipException: If an error occurs during the copy process.
+        """
         try:
             pyperclip.copy(text)
         except pyperclip.PyperclipException:
             logging.error("Erro ao copiar texto para a área de transferência.")
             
         
-    def on_release(self, event):
-        # Capturar a área selecionada
+    def on_release(self, event):        
+        """Fecha a janela e chama o método capture_screen 
+        com as coordenadas do retângulo de seleção.
+
+        :param event: Evento do mouse
+        :type event: tk.Event
+        """
         if self.start_x and self.start_y and self.current_x and self.current_y:
             x1 = min(self.start_x, self.current_x)
             y1 = min(self.start_y, self.current_y)
@@ -78,6 +101,17 @@ class ScreenCaptureOCR:
             self.root.after(100, lambda: self.capture_screen(x1, y1, x2, y2))
 
     def capture_screen(self, x1, y1, x2, y2):
+        """Captura aerea da tela e salva em um arquivo temporario.
+        
+        :param x1: Primeira coordenada do retângulo de seleção
+        :type x1: int
+        :param y1: Segunda coordenada do retângulo de seleção
+        :type y1: int
+        :param x2: Terceira coordenada do retângulo de seleção
+        :type x2: int
+        :param y2: Quarta coordenada do retângulo de seleção
+        :type y2: int
+        """
         try :
             # Captura a área selecionada
             screenshot = ImageGrab.grab(bbox=(x1, y1, x2, y2))
@@ -89,7 +123,7 @@ class ScreenCaptureOCR:
             screenshot.save(nomefarquivo)
             
             # Realiza OCR
-            text = pytesseract.image_to_string(screenshot, lang='por')
+            text = pytesseract.image_to_string(screenshot, lang=self.linguagem)
                         
             logging.info(f"Texto extraído: {text}")
             logging.info("\nTexto copiado para a área de transferência.")
@@ -113,6 +147,11 @@ def main():
             logging_name = config['log']['name'] if 'name' in config['log'] else 'ocr.log'
             logging_encoding = config['log']['encoding'] if 'encoding' in config['log'] else 'utf-8' 
             logging.basicConfig(level=logging_level, format='%(asctime)s - %(levelname)s - %(message)s', filename=logging_name,encoding=logging_encoding)
+
+        
+        # Verifica a linguagem selecionada. Default: português
+        linguagem = config['Idioma'] if 'Idioma' in config else 'por'
+
     else:
         # Configuração do log
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', filename='ocr.log',encoding='utf-8')
